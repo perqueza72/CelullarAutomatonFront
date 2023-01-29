@@ -26,6 +26,7 @@ function App() {
   const [ruleState, setRuleState] = useState(false);
   const [currenStep, setCurrentStep] = useState(-3);
   const [pattern, setPattern] = useState(null);
+  const [boards, setBoards] = useState([])
   const [board, setBoard] = useState(null);
 
   useEffect(() => {
@@ -38,6 +39,7 @@ function App() {
   const handleAutomata = (e) => {
     if (selectedAutomata !== "") {
       sessionStorage.clear();
+      setBoards([])
       setCurrentStep(-2);
       setInitialState(false);
       setRuleState(true);
@@ -51,11 +53,31 @@ function App() {
 
   const ShowAutomata = () => {
     if (selectedAutomata === "1D")
-      return <Automata1D
-        ruleState={ruleState}
-        initialState={initialState}
-        currentStep={currenStep}
-        board={board} />
+      return (
+        <>
+          {console.log("boards", boards.size)}
+          {
+            boards.length ? boards.map((m, i) =>
+            <>
+                <Automata1D
+                  key={`board_${i}`}
+                  ruleState={ruleState}
+                  initialState={initialState}
+                  currentStep={currenStep}
+                  board={m} />
+              <div style={{ display: "block", width:"100%" }}/>
+              </>
+            ) : null
+          }
+          {ruleState || initialState ?
+            <Automata1D
+              ruleState={ruleState}
+              initialState={initialState}
+              currentStep={currenStep}
+              board={board} /> : null
+          }
+        </>
+      )
 
     if (selectedAutomata === "2D")
       return <Automata2D
@@ -70,16 +92,25 @@ function App() {
   const transition = async () => {
     setCurrentStep(currenStep + 1);
 
-    if(currenStep >= 0){
-      const board = await NextState()
-      setBoard(board)
+    if (currenStep >= 0) {
+      // if(board !== null){
+      //   const actual_board = JSON.parse(JSON.stringify(board))
+      // }
+      const NewBoard = await NextState()
+      let newB = JSON.parse(JSON.stringify(boards))
+      newB.push(NewBoard)
+      setBoards(newB)
+      setBoard(NewBoard)
     }
   }
 
   const redoTransition = async () => {
     setCurrentStep(currenStep - 1);
-    if(currenStep >= 0){
+    if (currenStep > 0) {
       const board = await PreviousState()
+      let newB = JSON.parse(JSON.stringify(boards))
+      newB.pop()
+      setBoards(newB)
       setBoard(board)
     }
   }
@@ -88,9 +119,12 @@ function App() {
     setInitialState(false);
 
     let ultimateBoard = null;
-    if (selectedAutomata === "1D") ultimateBoard = await firstPetitionAutomaton1D(getBoard1D(), pattern);
-    else ultimateBoard = await firstPetitionAutomaton2D(getBoard2D(), pattern);
+    if (selectedAutomata === "1D")
+      ultimateBoard = await firstPetitionAutomaton1D(getBoard1D(), pattern);
+    else
+      ultimateBoard = await firstPetitionAutomaton2D(getBoard2D(), pattern);
     setBoard(ultimateBoard);
+    setBoards([ultimateBoard])
     transition();
   }
 
@@ -98,7 +132,7 @@ function App() {
     transition();
     setRuleState(false);
     setInitialState(true);
-    
+
     if (selectedAutomata === "1D") setPattern(getRules1D());
     else setPattern(getRules2D());
     sessionStorage.clear();
